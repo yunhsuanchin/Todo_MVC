@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+  <link rel="stylesheet" href="/css/style.css">
+  
+</head>
+<body>
+  <div id="app">
+    <section class="todoapp">
+      <header>
+        <h1>todos</h1>
+      </header>
+      <input type="text" class="new-todo" placeholder="需要做什麼？" autofocus v-model="newTodo" @keyup.enter="addTodo(newTodo)">
+      <main class="main" v-show="todos.length">
+        <input type="checkbox" id="toggle-all" class="toggle-all" v-model="allDone">
+        <label for="toggle-all"></label>
+
+        <ul class="todo-list">
+          <li class="todo" v-for="todo in filteredTodos" v-bind:key="todo.id" v-bind:class="{ completed: todo.completed, editing: todo.id === currentEditTodo.id }" @dblclick="editTodo(todo)">
+            <div class="view">
+              <input type="checkbox" class="toggle" v-model="todo.completed">
+              <label for="">{{ todo.title }}</label>
+              <button class="destroy" @click="removeTodo(todo)"></button>
+            </div>
+            <input type="text" class="edit" v-model="currentEditTodo.title" v-on="{ keyup.esc: cancelEdit, keyup.enter: doneEdit, blur: doneEdit }" v-todo-focus="todo.id === currentEditTodo.id">
+          </li>
+        </ul>
+      </main>
+
+      <footer class="footer" v-show="todos.length">
+        <span class="todo-count">
+          <strong>{{ remaining }} </strong>{{ remaining | pluralize }} left
+        </span>
+        <ul class="filters">
+          <li>
+            <a href="#/all" @click="setVisibility('all')" v-bind:class="{ selected: visibility === 'all' }">All</a>
+          </li>
+          <li>
+            <a href="#/active" @click="setVisibility('active')" v-bind:class="{ selected: visibility === 'active' }">Active</a>
+          </li>
+          <li>
+            <a href="#/completed" @click="setVisibility('completed')" v-bind:class="{ selected: visibility === 'completed' }">Completed</a>
+          </li>
+        </ul>
+        <button class="clear-completed" @click="clearComplete">
+          Clear completed
+        </button>
+      </footer>
+    </section>
+  </div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/uuid/8.1.0/uuidv4.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"></script>
+<script>
+  // 呼叫以回傳指定狀態的 todo
+  const filters = {
+    all:(todos) => todos,
+    active:(todos) => todos.filter(todo => !todo.completed),
+    completed:(todos) => todos.filter(todo => todo.completed)
+  }
+
+  new Vue({
+    el: '#app',
+    data: {
+      newTodo: '',
+      visibility: 'all',
+      todos: [],
+      currentEditTodo: {}
+    },
+    computed: {
+      remaining(){
+        return filters.active(this.todos).length
+      },
+      filteredTodos(){
+        return filters[this.visibility](this.todos)
+      },
+      allDone: {
+        get() {
+          return this.remaining === 0
+        },
+        set(value) {
+          this.todos = this.todos.map(todo => (
+            { ...todo, completed: value }
+          ))
+        }
+      }
+    },
+    filters: {
+      pluralize(num){
+        return num === 1 ? 'item' : 'items'
+      }
+    },
+    methods: {
+      addTodo(value){
+        value = value.trim()
+        if (!value) return
+        this.todos.push({
+          id: uuidv4(),
+          title: value,
+          completed: false
+        })
+        this.newTodo = ''
+      },
+      removeTodo(item){
+        const id = item.id
+        this.todos = this.todos.filter(todo => todo.id !== id)
+      },
+      setVisibility(visibility){
+        this.visibility = visibility
+      },
+      clearComplete(){
+        this.todos = filters.active(this.todos)
+      },
+      setStorage(){
+        localStorage.setItem('TodoList', JSON.stringify(this.todos))
+      },
+      editTodo(value) {
+        this.currentEditTodo = { ...value }
+      },
+      cancelEdit() {
+        this.currentEditTodo = {}
+      },
+      doneEdit() {
+        this.todos = this.todos.map((todo) => {
+          if (todo.id === this.currentEditTodo.id){
+            return { ...this.currentEditTodo }
+          } else {
+            return todo
+          }
+        }).filter(todo => todo.title.trim())
+        this.currentEditTodo = {}
+      }
+    },
+    watch: {
+      todos: {
+        handler(){
+          console.log('set storage')
+          this.setStorage()
+        },
+        deep: true
+      }
+    },
+    directives: {
+      'todo-focus'(el, binging) {
+        if (binging.value){
+          el.focus()
+        }
+      }
+    },
+    created () {
+      console.log('created')
+      this.todos = JSON.parse(localStorage.getItem('TodoList')) || []
+    },
+    mounted () {
+      console.log('mounted')
+    },
+    updated () {
+      console.log('updated')
+    }
+  })
+
+</script>
+  
+</body>
+</html>
